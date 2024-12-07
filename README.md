@@ -1,4 +1,3 @@
-# pente
 # Pente AI with Minimax and Heuristic Evaluation
 
 ## 🧠 About the Project

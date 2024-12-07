@@ -234,7 +234,7 @@ class PenteAI:
         score += 10 * (1 if board[center][center] == player else 0)
 
         return score
-    import time
+
     def get_best_move(self, search_depth=2, time_limit=2):  # Add a time limit
         best_score = float('-inf')
         best_move = None
@@ -283,15 +283,19 @@ class PenteAI:
             float: Evaluation score
         """
         # Check win conditions
-        winner = self.game.check_win()
+        gameObj = PenteGame()
+        winner = gameObj.check_win()        
         if winner == self.player_number:
             return 1000
-        elif winner != 0 and winner != self.player_number:
-            return -1000
+        # elif winner != 0 and winner != self.player_number:
+        #     return -1000
 
         # Reached max depth
         if depth == 0:
-            return self.evaluate_board_state(self.game.board,self.game.current_player)
+            print("Are you here?")
+            val = PenteAI.evaluate_board_state(self.game.board,self.game.current_player)
+            print(val)
+            return val
 
         if is_maximizing:
             best_score = float('-inf')
