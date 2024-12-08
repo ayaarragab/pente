@@ -154,7 +154,7 @@ class PenteAI:
         self.opponent = 3 - player_number
 
     @staticmethod
-    def evaluate_board_state(board, player):
+    def evaluate_board_state(board, player): #heuristic funtion 1
         """
         Heuristic function for evaluating board state in a two-player game
 
@@ -263,6 +263,91 @@ class PenteAI:
                         score += 5 - max(abs(i), abs(j))  # Higher score for center proximity
 
         return score
+    
+    @staticmethod
+    def evaluate_board_state_advanced(board, ai_agent):  # heuristic function 2
+        """
+        board: game board
+        returns: -> high if there's a player2 stone, beside it agent stone,
+                    under the agent's stone there's another agent's stone,
+                    like that    1 2
+                                2
+                    suppose ai agent's stone is 2 and human is 1
+                    -> low if not
+                                               Cases to handle:
+                    1) 1 2 2
+                         2
+                    _______
+                    2)    2
+                       2
+                     1    2
+                    _______
+                    3) 1
+                       2 2
+                       2
+                    _______
+                    4) 1
+                       1 1
+                       2
+                    _______
+                    5) 1   1
+                         1
+                       2
+                    _______
+                    6)  1
+                      2 1 1
+        """
+        opponent = 3 - ai_agent
+        score = 0
+        for i, row in enumerate(board):
+            for j, cell in enumerate(row):
+                try:
+                    # Case 1
+                    if (cell == opponent and row[j + 1] == ai_agent
+                            and row[j + 2] == ai_agent and not row[j + 3]
+                            and board[i + 1][j + 1] == ai_agent):
+                        score += 100  # High priority
+
+                    # Case 2
+                    if (cell == ai_agent and board[i - 1][j + 1] == ai_agent
+                            and board[i + 1][j + 1] == ai_agent
+                            and i - 2 >= 0 and not board[i - 2][j + 2]
+                            and board[i + 1][j - 1] == opponent):
+                        score += 100  # High priority
+
+                    # Case 3
+                    if (cell == ai_agent and row[j + 1] == ai_agent
+                            and board[i + 1][j] == ai_agent
+                            and j - 1 >= 0 and row[j - 1] == opponent
+                            and not board[i][j + 2]):
+                        score += 100  # High priority
+
+                    # Case 4 - Vertical stack (New Case)
+                    if (i + 2 < len(board) and cell == ai_agent
+                            and board[i + 1][j] == opponent
+                            and board[i - 1][j] == ai_agent
+                            and row[j + 1] == ai_agent
+                            and (i + 3 >= len(board) or not board[i + 3][j])):
+                        score += 100  # High priority
+
+                    # Case 5
+                    if (cell == ai_agent and board[i - 1][j + 1] == ai_agent
+                            and board[i - 1][j - 1] == ai_agent
+                            and i - 2 >= 0 and not board[i - 2][j + 2]
+                            and board[i + 1][j - 1] == opponent):
+                        score += 100  # High priority
+
+                    # Case 6
+                    if (cell == opponent and row[j - 1] == ai_agent
+                            and row[j + 2] == ai_agent and not row[j + 3]
+                            and board[i + 1][j + 1] == ai_agent):
+                        score += 100  # High priority
+
+                except IndexError:
+                    continue
+
+        return score
+
 
     def get_best_move(self, max_depth=3, time_limit=2):  # Add a time limit
         best_move = None
