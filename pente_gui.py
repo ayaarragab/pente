@@ -139,8 +139,9 @@ class PenteGameGUI:
         # Blit the captures surface onto the main screen
         self.screen.blit(captures_surface, (self.MARGIN + (self.BOARD_SIZE - 1) * self.CELL_SIZE + 20, 20))
 
+
     def display_winner(self, winner):
-        """Display the winner of the game with enhanced appearance"""
+        """Display the winner of the game with enhanced appearance and reset functionality"""
 
         # Dim the screen by overlaying a semi-transparent black rectangle
         overlay = pygame.Surface((self.SCREEN_SIZE, self.SCREEN_SIZE))
@@ -161,6 +162,26 @@ class PenteGameGUI:
         reset_text = large_font.render("Click to reset the game", True, (200, 200, 200))  # Light gray
         reset_text_rect = reset_text.get_rect(center=(self.SCREEN_SIZE // 2, self.SCREEN_SIZE // 2 + 60))
         self.screen.blit(reset_text, reset_text_rect)
+
+        # Return the rectangle for click detection
+        return reset_text_rect
+
+
+    def handle_events(self):
+        """Handle game events including detecting clicks on reset text"""
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                exit()
+
+            # Detect mouse click
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                mouse_pos = pygame.mouse.get_pos()  # Get mouse position
+
+                # Check if click is within the reset text rectangle
+                reset_rect = self.display_winner(self.winner)  # Get the reset text rectangle
+                if reset_rect.collidepoint(mouse_pos):
+                    self.reset_game()  # Call the reset function
 
 
 def main():
