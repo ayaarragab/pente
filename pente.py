@@ -151,6 +151,7 @@ class PenteAI:
         """
         self.game = game
         self.player_number = player_number
+        self.opponent = 3 - player_number
 
     @staticmethod
     def evaluate_board_state(board, player):
@@ -164,172 +165,202 @@ class PenteAI:
         Returns:
             int: Evaluation score of the board state
         """
-        opponent = 3 - player  # Toggle between 1 and 2
+        opponent = 3 - player
         score = 0
         board_size = len(board)
 
-        # Directions to check: horizontal, vertical, diagonals
         directions = [
-            (0, 1),  # horizontal
-            (1, 0),  # vertical
-            (1, 1),  # diagonal down-right
-            (1, -1)  # diagonal up-right
+            (0, 1),
+            (1, 0),
+            (1, 1),
+            (1, -1)
         ]
 
-        # Check for sequences and potential blocking moves
+        patterns = {
+            (player, player, player, player, player): 10000,  # Win
+            (0, player, player, player, player, 0): 2000,  # Open four
+            (player, player, player, player, 0): 800,  # Four
+            (0, player, player, player, 0): 200,  # Open three
+            (player, player, player, 0, 0): 50,  # Three
+            (0, player, player, 0): 10,  # Open two
+            (player, player, 0, 0): 5  # Two
+        }
+
+        # Check for captures (higher priority)
+        captures = 0
+        for row in range(board_size):
+            for col in range(board_size):
+                if board[row][col] == player:
+                    for dx, dy in directions:
+                        try:
+                            if (0 <= row + 3 * dx < board_size and
+                                    0 <= col + 3 * dy < board_size and
+                                    board[row + dx][col + dy] == opponent and
+                                    board[row + 2 * dx][col + 2 * dy] == opponent and
+                                    board[row + 3 * dx][col + 3 * dy] == player):
+                                captures += 1
+                        except IndexError:
+                            continue
+        score += captures * 300
+
+        # Pattern recognition
         for row in range(board_size):
             for col in range(board_size):
                 for dx, dy in directions:
-                    # Player's sequences
-                    player_seq = 0
-                    empty_spaces = 0
+                    # Check each pattern
+                    for pattern, pattern_score in patterns.items():
+                        pattern_found = True
+                        pattern_length = len(pattern)
 
-                    # Check sequence in both directions
-                    for step in [1, -1]:
-                        for i in range(1, 5):  # Look up to 4 spaces away
-                            try:
-                                current_pos = board[row + step * i * dx][col + step * i * dy]
+                        # Verify pattern fits on board
+                        if not (0 <= row + (pattern_length - 1) * dx < board_size and
+                                0 <= col + (pattern_length - 1) * dy < board_size):
+                            continue
 
-                                if current_pos == player:
-                                    player_seq += 1
-                                elif current_pos == 0:
-                                    empty_spaces += 1
-                                else:
-                                    break
-                            except IndexError:
+                        # Check if pattern matches
+                        for i, value in enumerate(pattern):
+                            if board[row + i * dx][col + i * dy] != value:
+                                pattern_found = False
                                 break
 
-                    # Scoring for player's sequences
-                    if player_seq == 3 and empty_spaces > 0:
-                        score += 50  # Potential winning sequence
-                    elif player_seq == 4 and empty_spaces > 0:
-                        score += 100  # Very close to winning
+                        if pattern_found:
+                            score += pattern_score
 
-                    # Opponent blocking logic
-                    opp_seq = 0
-                    opp_empty_spaces = 0
+        # Opponent patterns (defensive moves)
+        opponent_patterns = {
+            (opponent, opponent, opponent, opponent, 0): -900,  # Block opponent's four
+            (0, opponent, opponent, opponent, 0): -300,  # Block opponent's open three
+            (opponent, opponent, opponent, 0, 0): -80,  # Block opponent's three
+            (0, opponent, opponent, 0): -20  # Block opponent's open two
+        }
 
-                    for step in [1, -1]:
-                        for i in range(1, 5):
-                            try:
-                                current_pos = board[row + step * i * dx][col + step * i * dy]
+        # Check opponent patterns
+        for row in range(board_size):
+            for col in range(board_size):
+                for dx, dy in directions:
+                    for pattern, pattern_score in opponent_patterns.items():
+                        pattern_found = True
+                        pattern_length = len(pattern)
 
-                                if current_pos == opponent:
-                                    opp_seq += 1
-                                elif current_pos == 0:
-                                    opp_empty_spaces += 1
-                                else:
-                                    break
-                            except IndexError:
+                        if not (0 <= row + (pattern_length - 1) * dx < board_size and
+                                0 <= col + (pattern_length - 1) * dy < board_size):
+                            continue
+
+                        for i, value in enumerate(pattern):
+                            if board[row + i * dx][col + i * dy] != value:
+                                pattern_found = False
                                 break
 
-                    # Blocking opponent's potential winning sequences
-                    if opp_seq == 3 and opp_empty_spaces > 0:
-                        score -= 60  # Urgently need to block
-                    elif opp_seq == 4 and opp_empty_spaces > 0:
-                        score -= 120  # Critical blocking needed
+                        if pattern_found:
+                            score += pattern_score
 
-        # Favoring the center of the board (more strategic)
+        # Position evaluation
         center = board_size // 2
-        score += 10 * (1 if board[center][center] == player else 0)
+        for i in range(-2, 3):
+            for j in range(-2, 3):
+                if 0 <= center + i < board_size and 0 <= center + j < board_size:
+                    if board[center + i][center + j] == player:
+                        score += 5 - max(abs(i), abs(j))  # Higher score for center proximity
 
         return score
 
-    def get_best_move(self, search_depth=2, time_limit=2):  # Add a time limit
-        best_score = float('-inf')
+    def get_best_move(self, max_depth=3, time_limit=2):  # Add a time limit
         best_move = None
 
         start_time = time.time()  # Start the timer
 
         print("Evaluating best move...")
 
-        for row in range(self.game.board_size):
-            for col in range(self.game.board_size):
+        valid_moves = self.get_prioritized_moves()
+
+        for depth in range(1, max_depth + 1):
+            current_best_move = None
+            current_best_score = float('-inf')
+
+            for row, col in valid_moves:
+                if time.time() - start_time > time_limit:
+                    return best_move if best_move else current_best_move
+
                 if self.game.is_valid_move(row, col):
                     self.game.board[row][col] = self.player_number
-
-                    score = self.minimax(search_depth - 1, False)
-
+                    score = self.minimax(depth - 1, False, float('-inf'), float('inf'))
                     self.game.board[row][col] = 0
 
-                    print(f"Evaluating move ({row}, {col}) with score: {score}")
+                    if score > current_best_score:
+                        current_best_score = score
+                        current_best_move = (row, col)
 
-                    if score > best_score:
-                        best_score = score
-                        best_move = (row, col)
-
-                # Check if the time limit is exceeded
-                if time.time() - start_time > time_limit:
-                    print("Time limit exceeded, returning best move found so far.")
-                    return best_move
-
-        if best_move:
-            print(f"Best move found: {best_move} with score: {best_score}")
-        else:
-            print("No valid move found by AI.")  # Debugging line
+            if current_best_move:
+                best_move = current_best_move
         return best_move
 
-    def minimax(self, depth, is_maximizing, alpha=float('-inf'), beta=float('inf')):
+    def get_prioritized_moves(self):
         """
-        Minimax algorithm with alpha-beta pruning
-
-        Args:
-            depth (int): Remaining search depth
-            is_maximizing (bool): Whether it's maximizing player's turn
-            alpha (float): Alpha value for pruning
-            beta (float): Beta value for pruning
-
-        Returns:
-            float: Evaluation score
+        Get list of valid moves, prioritizing strategic positions
         """
-        # Check win conditions
-        gameObj = PenteGame()
-        winner = gameObj.check_win()        
+        board_size = self.game.board_size
+        center = board_size // 2
+        moves = []
+
+        # Check center and surrounding positions first
+        for i in range(-2, 3):
+            for j in range(-2, 3):
+                if 0 <= center + i < board_size and 0 <= center + j < board_size:
+                    moves.append((center + i, center + j))
+
+        # Add positions near existing stones
+        for row in range(board_size):
+            for col in range(board_size):
+                if self.game.board[row][col] != 0:
+                    for i in range(-1, 2):
+                        for j in range(-1, 2):
+                            if (0 <= row + i < board_size and
+                                    0 <= col + j < board_size and
+                                    (row + i, col + j) not in moves):
+                                moves.append((row + i, col + j))
+
+        # Add remaining positions
+        for row in range(board_size):
+            for col in range(board_size):
+                if (row, col) not in moves:
+                    moves.append((row, col))
+
+        return moves
+
+    def minimax(self, depth, is_maximizing, alpha, beta):
+        """
+        Enhanced minimax algorithm with alpha-beta pruning
+        """
+        winner = self.game.check_win()
         if winner == self.player_number:
-            return 1000
-        # elif winner != 0 and winner != self.player_number:
-        #     return -1000
+            return 10000
+        elif winner == self.opponent:
+            return -10000
+        elif depth == 0:
+            return self.evaluate_board_state(self.game.board, self.player_number)
 
-        # Reached max depth
-        if depth == 0:
-            print("Are you here?")
-            val = PenteAI.evaluate_board_state(self.game.board,self.game.current_player)
-            print(val)
-            return val
+        valid_moves = self.get_prioritized_moves()
 
         if is_maximizing:
             best_score = float('-inf')
-            for row in range(self.game.board_size):
-                for col in range(self.game.board_size):
-                    if self.game.is_valid_move(row, col):
-                        self.game.board[row][col] = self.player_number
-                        score = self.minimax(depth - 1, False, alpha, beta)
-                        self.game.board[row][col] = 0
-                        best_score = max(best_score, score)
-                        alpha = max(alpha, best_score)
-                        if beta <= alpha:
-                            break
-            return best_score
+            for row, col in valid_moves:
+                if self.game.is_valid_move(row, col):
+                    self.game.board[row][col] = self.player_number
+                    score = self.minimax(depth - 1, False, alpha, beta)
+                    self.game.board[row][col] = 0
+                    best_score = max(best_score, score)
+                    alpha = max(alpha, best_score)
+                    if beta <= alpha:
+                        break
         else:
             best_score = float('inf')
-            opponent = 3 - self.player_number
-            for row in range(self.game.board_size):
-                for col in range(self.game.board_size):
-                    if self.game.is_valid_move(row, col):
-                        self.game.board[row][col] = opponent
-                        score = self.minimax(depth - 1, True, alpha, beta)
-                        self.game.board[row][col] = 0
-                        best_score = min(best_score, score)
-                        beta = min(beta, best_score)
-                        if beta <= alpha:
-                            break
-            return best_score
-
-
-if __name__ == "__main__":
-    game = PenteGame()
-    print(game.make_move(0, 0))  # Should print True
-    print(type(game.current_player), game.current_player)  # Should print <class 'int'> 2
-    print(game.make_move(0, 1))  # Should print True
-    print(type(game.current_player), game.current_player)  # Should print <class 'int'> 1
-    print(game.check_win())  # Should print 0 (no winner yet)
+            for row, col in valid_moves:
+                if self.game.is_valid_move(row, col):
+                    self.game.board[row][col] = self.opponent
+                    score = self.minimax(depth - 1, True, alpha, beta)
+                    self.game.board[row][col] = 0
+                    best_score = min(best_score, score)
+                    beta = min(beta, best_score)
+                    if beta <= alpha:
+                        break
+        return best_score
