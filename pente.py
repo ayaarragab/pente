@@ -154,17 +154,7 @@ class PenteAI:
         self.opponent = 3 - player_number
 
     @staticmethod
-    def evaluate_board_state(board, player): #heuristic funtion 1
-        """
-        Heuristic function for evaluating board state in a two-player game
-
-        Args:
-            board (list): Game board
-            player (int): Current player number
-
-        Returns:
-            int: Evaluation score of the board state
-        """
+    def basic_evaluations(board, player):
         opponent = 3 - player
         score = 0
         board_size = len(board)
@@ -253,7 +243,22 @@ class PenteAI:
 
                         if pattern_found:
                             score += pattern_score
+            return score
 
+    @staticmethod
+    def evaluate_board_state(board, player): #heuristic funtion 1
+        """
+        Heuristic function for evaluating board state in a two-player game
+
+        Args:
+            board (list): Game board
+            player (int): Current player number
+
+        Returns:
+            int: Evaluation score of the board state
+        """
+        board_size = len(board)
+        score = PenteAI.basic_evaluations(board, player)
         # Position evaluation
         center = board_size // 2
         for i in range(-2, 3):
@@ -298,7 +303,7 @@ class PenteAI:
                       2 1 1
         """
         opponent = 3 - ai_agent
-        score = 0
+        score = PenteAI.basic_evaluations(board, opponent)
         for i, row in enumerate(board):
             for j, cell in enumerate(row):
                 try:
