@@ -539,7 +539,7 @@ class PenteAI:
             for row, col in valid_moves:
                 if self.game.is_valid_move(row, col):
                     self.game.board[row][col] = self.player_number
-                    score = self.minimax(depth - 1, False)
+                    score = self.minimax_without_alpha_Beta(depth - 1, False, heuristic_funtion)
                     self.game.board[row][col] = 0
                     best_score = max(best_score, score)
         else:
@@ -547,15 +547,17 @@ class PenteAI:
             for row, col in valid_moves:
                 if self.game.is_valid_move(row, col):
                     self.game.board[row][col] = self.opponent
-                    score = self.minimax(depth - 1, True)
+                    score = self.minimax_without_alpha_Beta(depth - 1, True, heuristic_funtion)
                     self.game.board[row][col] = 0
                     best_score = min(best_score, score)
         return best_score
 
-    def minimax(self, depth, is_maximizing, alpha, beta, heuristic_funtion):
+    def minimax(self, depth, is_maximizing, alpha, beta, heuristic_funtion=None):
         """
         Enhanced minimax algorithm with alpha-beta pruning
         """
+        if not heuristic_funtion:
+            heuristic_funtion = PenteAI.evaluate_board_state_easy
         winner = self.game.check_win()
         if winner == self.player_number:
             return 10000
