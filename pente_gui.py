@@ -96,7 +96,7 @@ class PenteGameGUI:
 
                                     # AI's turn
                                     if not self.winner:
-                                        ai_move = self.ai.get_best_move()
+                                        ai_move = self.ai.get_best_move(self.ai.minimax_without_alpha_Beta, False, PenteAI.evaluate_board_state_advanced)
                                         if ai_move:
                                             self.pente_game.make_move(ai_move[0], ai_move[1])
                                             self.winner = self.pente_game.check_win()

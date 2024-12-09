@@ -246,7 +246,7 @@ class PenteAI:
             return score
 
     @staticmethod
-    def evaluate_board_state(board, player): #heuristic funtion 1
+    def evaluate_board_state_advanced(board, player): #heuristic funtion 1
         """
         Heuristic function for evaluating board state in a two-player game
 
@@ -270,7 +270,7 @@ class PenteAI:
         return score
     
     @staticmethod
-    def evaluate_board_state_advanced(board, ai_agent):  # heuristic function 2
+    def evaluate_board_state_easy(board, ai_agent):  # heuristic function 2
         """
         board: game board
         returns: -> high if there's a player2 stone, beside it agent stone,
