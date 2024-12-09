@@ -353,8 +353,7 @@ class PenteAI:
 
         return score
 
-
-    def get_best_move(self, max_depth=3, time_limit=2):  # Add a time limit
+    def get_best_move(self, minimax_func, isAlphaBeta, heuristic_fun, max_depth=3, time_limit=2):  # Add a time limit
         best_move = None
 
         start_time = time.time()  # Start the timer
@@ -373,7 +372,10 @@ class PenteAI:
 
                 if self.game.is_valid_move(row, col):
                     self.game.board[row][col] = self.player_number
-                    score = self.minimax(depth - 1, False, float('-inf'), float('inf'))
+                    if isAlphaBeta:
+                        score = minimax_func(depth - 1, False, float('-inf'), float('inf'), heuristic_fun)
+                    else:
+                        score = minimax_func(depth - 1, False, heuristic_fun)
                     self.game.board[row][col] = 0
 
                     if score > current_best_score:
@@ -417,7 +419,39 @@ class PenteAI:
 
         return moves
 
-    def minimax(self, depth, is_maximizing, alpha, beta):
+    def minimax_without_alpha_Beta(self, depth, is_maximizing, heuristic_funtion):
+        """
+        Minimax algorithm without alpha-beta pruning
+        """
+        winner = self.game.check_win()
+        if winner == self.player_number:
+            return 10000
+        elif winner == self.opponent:
+            return -10000
+        elif depth == 0:
+            return heuristic_funtion(self.game.board, self.player_number)
+
+        valid_moves = self.get_prioritized_moves()
+
+        if is_maximizing:
+            best_score = float('-inf')
+            for row, col in valid_moves:
+                if self.game.is_valid_move(row, col):
+                    self.game.board[row][col] = self.player_number
+                    score = self.minimax(depth - 1, False)
+                    self.game.board[row][col] = 0
+                    best_score = max(best_score, score)
+        else:
+            best_score = float('inf')
+            for row, col in valid_moves:
+                if self.game.is_valid_move(row, col):
+                    self.game.board[row][col] = self.opponent
+                    score = self.minimax(depth - 1, True)
+                    self.game.board[row][col] = 0
+                    best_score = min(best_score, score)
+        return best_score
+
+    def minimax(self, depth, is_maximizing, alpha, beta, heuristic_funtion):
         """
         Enhanced minimax algorithm with alpha-beta pruning
         """
@@ -427,7 +461,7 @@ class PenteAI:
         elif winner == self.opponent:
             return -10000
         elif depth == 0:
-            return self.evaluate_board_state(self.game.board, self.player_number)
+            return heuristic_funtion(self.game.board, self.player_number)
 
         valid_moves = self.get_prioritized_moves()
 
