@@ -246,29 +246,168 @@ class PenteAI:
             return score
 
     @staticmethod
-    def evaluate_board_state_advanced(board, player): #heuristic funtion 1
+    def evaluate_board_state_advanced(board, player):
         """
-        Heuristic function for evaluating board state in a two-player game
+        Advanced heuristic function for evaluating Pente board state
+        Considers multiple strategic aspects of the game
 
         Args:
             board (list): Game board
             player (int): Current player number
 
         Returns:
-            int: Evaluation score of the board state
+            int: Comprehensive evaluation score of the board state
         """
+        opponent = 3 - player
         board_size = len(board)
-        score = PenteAI.basic_evaluations(board, player)
-        # Position evaluation
+        score = 0
+
+        # Directional vectors for checking different board patterns
+        directions = [
+            (0, 1),   # Horizontal
+            (1, 0),   # Vertical
+            (1, 1),   # Diagonal down-right
+            (1, -1)   # Diagonal up-right
+        ]
+
+        # Comprehensive pattern scoring with more nuanced evaluations
+        patterns = {
+            # Winning and critical patterns
+            (player, player, player, player, player): 100000,  # Immediate win
+            (0, player, player, player, player, 0): 50000,    # Open four (critical threat)
+            
+            # Strong offensive patterns
+            (player, player, player, player, 0): 10000,       # Nearly complete line
+            (0, player, player, player, 0): 5000,             # Open three with potential
+            (player, player, player, 0, 0): 2000,             # Developing three
+            (0, player, player, 0): 500,                      # Open two
+            (player, player, 0, 0): 200,                      # Potential two
+        }
+
+        # Defensive pattern recognition
+        defensive_patterns = {
+            (opponent, opponent, opponent, opponent, 0): -40000,  # Block opponent's four
+            (0, opponent, opponent, opponent, 0): -20000,         # Block critical threat
+            (opponent, opponent, opponent, 0, 0): -5000,          # Block developing line
+            (0, opponent, opponent, 0): -1000,                    # Block potential line
+        }
+
+        # Capture evaluation with more strategic weighting
+        def evaluate_captures(board, player):
+            opponent = 3 - player
+            capture_score = 0
+            capture_locations = []
+
+            for row in range(board_size):
+                for col in range(board_size):
+                    if board[row][col] == player:
+                        for dx, dy in directions:
+                            try:
+                                # Check for potential captures of exactly two opponent stones
+                                if (0 <= row + 3 * dx < board_size and
+                                    0 <= col + 3 * dy < board_size and
+                                    board[row + dx][col + dy] == opponent and
+                                    board[row + 2 * dx][col + 2 * dy] == opponent and
+                                    board[row + 3 * dx][col + 3 * dy] == player):
+                                    
+                                    # Bonus for strategic capture locations
+                                    capture_locations.append((row, col))
+                                    capture_score += 1000
+                            except IndexError:
+                                continue
+            
+            # Additional scoring for multiple captures and strategic capture locations
+            if len(capture_locations) > 1:
+                capture_score += len(capture_locations) * 500
+            
+            return capture_score
+
+        # Calculate base score
+        score += PenteAI.basic_evaluations(board, player)
+
+        # Evaluate captures
+        score += evaluate_captures(board, player)
+
+        # Advanced positional evaluation
         center = board_size // 2
-        for i in range(-2, 3):
-            for j in range(-2, 3):
+        center_control_bonus = 0
+        
+        # More sophisticated center control
+        for i in range(-3, 4):
+            for j in range(-3, 4):
                 if 0 <= center + i < board_size and 0 <= center + j < board_size:
                     if board[center + i][center + j] == player:
-                        score += 5 - max(abs(i), abs(j))  # Higher score for center proximity
+                        # Exponential decay of bonus based on distance from center
+                        center_control_bonus += max(0, 10 - (abs(i) + abs(j))) ** 2
+
+        score += center_control_bonus
+
+        # Mobility and potential move evaluation
+        potential_moves = 0
+        for row in range(board_size):
+            for col in range(board_size):
+                if board[row][col] == 0:
+                    # Check surrounding area for strategic potential
+                    surrounding_stones = 0
+                    for dx in [-1, 0, 1]:
+                        for dy in [-1, 0, 1]:
+                            if (0 <= row + dx < board_size and 
+                                0 <= col + dy < board_size and 
+                                board[row + dx][col + dy] != 0):
+                                surrounding_stones += 1
+                    
+                    if surrounding_stones > 0:
+                        potential_moves += surrounding_stones * 10
+
+        score += potential_moves
+
+        # Pattern recognition
+        for row in range(board_size):
+            for col in range(board_size):
+                for dx, dy in directions:
+                    # Check offensive patterns
+                    for pattern, pattern_score in patterns.items():
+                        if PenteAI._check_pattern(board, row, col, dx, dy, pattern):
+                            score += pattern_score
+
+                    # Check defensive patterns
+                    for pattern, pattern_score in defensive_patterns.items():
+                        if PenteAI._check_pattern(board, row, col, dx, dy, pattern):
+                            score += pattern_score
 
         return score
-    
+
+    @staticmethod
+    def _check_pattern(board, row, col, dx, dy, pattern):
+        """
+        Helper method to check if a specific pattern exists on the board
+        
+        Args:
+            board (list): Game board
+            row (int): Starting row
+            col (int): Starting column
+            dx (int): Row direction
+            dy (int): Column direction
+            pattern (tuple): Pattern to match
+
+        Returns:
+            bool: Whether the pattern is found
+        """
+        board_size = len(board)
+        pattern_length = len(pattern)
+
+        # Verify pattern fits on board
+        if not (0 <= row + (pattern_length - 1) * dx < board_size and
+                0 <= col + (pattern_length - 1) * dy < board_size):
+            return False
+
+        # Check if pattern matches
+        for i, value in enumerate(pattern):
+            if board[row + i * dx][col + i * dy] != value:
+                return False
+
+        return True
+
     @staticmethod
     def evaluate_board_state_easy(board, ai_agent):  # heuristic function 2
         """
@@ -304,52 +443,14 @@ class PenteAI:
         """
         opponent = 3 - ai_agent
         score = PenteAI.basic_evaluations(board, opponent)
-        for i, row in enumerate(board):
-            for j, cell in enumerate(row):
-                try:
-                    # Case 1
-                    if (cell == opponent and row[j + 1] == ai_agent
-                            and row[j + 2] == ai_agent and not row[j + 3]
-                            and board[i + 1][j + 1] == ai_agent):
-                        score += 100  # High priority
-
-                    # Case 2
-                    if (cell == ai_agent and board[i - 1][j + 1] == ai_agent
-                            and board[i + 1][j + 1] == ai_agent
-                            and i - 2 >= 0 and not board[i - 2][j + 2]
-                            and board[i + 1][j - 1] == opponent):
-                        score += 100  # High priority
-
-                    # Case 3
-                    if (cell == ai_agent and row[j + 1] == ai_agent
-                            and board[i + 1][j] == ai_agent
-                            and j - 1 >= 0 and row[j - 1] == opponent
-                            and not board[i][j + 2]):
-                        score += 100  # High priority
-
-                    # Case 4 - Vertical stack (New Case)
-                    if (i + 2 < len(board) and cell == ai_agent
-                            and board[i + 1][j] == opponent
-                            and board[i - 1][j] == ai_agent
-                            and row[j + 1] == ai_agent
-                            and (i + 3 >= len(board) or not board[i + 3][j])):
-                        score += 100  # High priority
-
-                    # Case 5
-                    if (cell == ai_agent and board[i - 1][j + 1] == ai_agent
-                            and board[i - 1][j - 1] == ai_agent
-                            and i - 2 >= 0 and not board[i - 2][j + 2]
-                            and board[i + 1][j - 1] == opponent):
-                        score += 100  # High priority
-
-                    # Case 6
-                    if (cell == opponent and row[j - 1] == ai_agent
-                            and row[j + 2] == ai_agent and not row[j + 3]
-                            and board[i + 1][j + 1] == ai_agent):
-                        score += 100  # High priority
-
-                except IndexError:
-                    continue
+        # Position evaluation
+        board_size = len(board)
+        center = len(board) // 2
+        for i in range(-2, 3):
+            for j in range(-2, 3):
+                if 0 <= center + i < board_size and 0 <= center + j < board_size:
+                    if board[center + i][center + j] == opponent:
+                        score += 5 - max(abs(i), abs(j))
 
         return score
 
