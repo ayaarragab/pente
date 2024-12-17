@@ -175,49 +175,170 @@ class PenteAI:
 
     @staticmethod
     def evaluate_board_state_advanced(board, player):
-        board_size = len(board)
-        scores = set()
+        """
+        Heuristic function for evaluating board state in a two-player game
 
+        Args:
+            board (list): Game board
+            player (int): Current player number
+
+        Returns:
+            int: Evaluation score of the board state
+        """
+        opponent = 3 - player  # Toggle between 1 and 2
+        score = 0
+        board_size = len(board)
+
+        # Directions to check: horizontal, vertical, diagonals
+        directions = [
+            (0, 1),  # horizontal
+            (1, 0),  # vertical
+            (1, 1),  # diagonal down-right
+            (1, -1)  # diagonal up-right
+        ]
+
+        # Check for sequences and potential blocking moves
         for row in range(board_size):
             for col in range(board_size):
                 for dx, dy in directions:
-                    for pattern in agent_patterns:
-                        game = PenteGame()
-                        if game.is_valid_move(row, col) and PenteAI._check_pattern(board, row, col, dx, dy, pattern):
-                            scores.add(agent_patterns[pattern])
-        if not scores:
-            return 0
-        else:
-            return max(scores)
-                            
+                    # Player's sequences
+                    player_seq = 0
+                    empty_spaces = 0
+
+                    # Check sequence in both directions
+                    for step in [1, -1]:
+                        for i in range(1, 5):  # Look up to 4 spaces away
+                            try:
+                                current_pos = board[row + step * i * dx][col + step * i * dy]
+
+                                if current_pos == player:
+                                    player_seq += 1
+                                elif current_pos == 0:
+                                    empty_spaces += 1
+                                else:
+                                    break
+                            except IndexError:
+                                break
+
+                    # Scoring for player's sequences
+                    if player_seq == 3 and empty_spaces > 0:
+                        score += 50  # Potential winning sequence
+                    elif player_seq == 4 and empty_spaces > 0:
+                        score += 100  # Very close to winning
+
+                    # Opponent blocking logic
+                    opp_seq = 0
+                    opp_empty_spaces = 0
+
+                    for step in [1, -1]:
+                        for i in range(1, 5):
+                            try:
+                                current_pos = board[row + step * i * dx][col + step * i * dy]
+
+                                if current_pos == opponent:
+                                    opp_seq += 1
+                                elif current_pos == 0:
+                                    opp_empty_spaces += 1
+                                else:
+                                    break
+                            except IndexError:
+                                break
+
+                    # Blocking opponent's potential winning sequences
+                    if opp_seq == 3 and opp_empty_spaces > 0:
+                        score -= 60  # Urgently need to block
+                    elif opp_seq == 4 and opp_empty_spaces > 0:
+                        score -= 120  # Critical blocking needed
+
+        # Favoring the center of the board (more strategic)
+        center = board_size // 2
+        score += 10 * (1 if board[center][center] == player else 0)
+
+        return score
+
     @staticmethod
-    def _check_pattern(board, row, col, dx, dy, pattern):
+    def evaluate_board_state_easy(board, player):
         """
-        Helper method to check if a specific pattern exists on the board
-        
+        Heuristic function for evaluating board state in a two-player game
+
         Args:
             board (list): Game board
-            row (int): Starting row
-            col (int): Starting column
-            dx (int): Row direction
-            dy (int): Column direction
-            pattern (tuple): Pattern to match
+            player (int): Current player number
 
         Returns:
-            bool: Whether the pattern is found
+            int: Evaluation score of the board state
         """
+        opponent = 3 - player  # Toggle between 1 and 2
+        score = 0
         board_size = len(board)
-        pattern_length = len(pattern)
 
-        # Verify pattern fits on board
-        if not (0 <= row + (pattern_length - 1) * dx < board_size and
-                0 <= col + (pattern_length - 1) * dy < board_size):
-            return False
+        # Directions to check: horizontal, vertical, diagonals
+        directions = [
+            (0, 1),  # horizontal
+            (1, 0),  # vertical
+            (1, 1),  # diagonal down-right
+            (1, -1)  # diagonal up-right
+        ]
 
-        # Check if pattern matches
-        for i, value in enumerate(pattern):
-            if board[row + i * dx][col + i * dy] != value:
-                return False
+        # Check for sequences and potential blocking moves
+        for row in range(board_size):
+            for col in range(board_size):
+                for dx, dy in directions:
+                    # Player's sequences
+                    player_seq = 0
+                    empty_spaces = 0
+
+                    # Check sequence in both directions
+                    for step in [1, -1]:
+                        for i in range(1, 5):  # Look up to 4 spaces away
+                            try:
+                                current_pos = board[row + step * i * dx][col + step * i * dy]
+
+                                if current_pos == player:
+                                    player_seq += 1
+                                elif current_pos == 0:
+                                    empty_spaces += 1
+                                else:
+                                    break
+                            except IndexError:
+                                break
+
+                    # Scoring for player's sequences
+                    if player_seq == 3 and empty_spaces > 0:
+                        score += 50  # Potential winning sequence
+                    elif player_seq == 4 and empty_spaces > 0:
+                        score += 100  # Very close to winning
+
+                    # Opponent blocking logic
+                    opp_seq = 0
+                    opp_empty_spaces = 0
+
+                    for step in [1, -1]:
+                        for i in range(1, 5):
+                            try:
+                                current_pos = board[row + step * i * dx][col + step * i * dy]
+
+                                if current_pos == opponent:
+                                    opp_seq += 1
+                                elif current_pos == 0:
+                                    opp_empty_spaces += 1
+                                else:
+                                    break
+                            except IndexError:
+                                break
+
+                    # Blocking opponent's potential winning sequences
+                    if opp_seq == 3 and opp_empty_spaces > 0:
+                        score -= 60  # Urgently need to block
+                    elif opp_seq == 4 and opp_empty_spaces > 0:
+                        score -= 120  # Critical blocking needed
+
+        # Favoring the center of the board (more strategic)
+        center = board_size // 2
+        score += 10 * (1 if board[center][center] == player else 0)
+
+        return score
+
 
     def get_best_move(self, board, minimax_func, isAlphaBeta, heuristic_fun, max_depth=3, time_limit=2):  # Add a time limit
         best_move = None
