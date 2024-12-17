@@ -4,8 +4,8 @@ agent = 1
 player = 2
 
 agent_patterns = {
-    (agent, agent, agent, agent, agent): 10000,  # Win
-    (0, agent, agent, agent, agent, 0): 2000,  # Open four
+    (agent, agent, agent, agent, agent): 1000,  # Win
+    (0, agent, agent, agent, agent, 0): 900,  # Open four
     (agent, agent, agent, agent, 0): 800,  # Four
     (0, agent, agent, agent, 0): 200,  # Open three
     (agent, agent, agent, 0, 0): 50,  # Three
@@ -14,14 +14,14 @@ agent_patterns = {
 }
 
 player_patterns = {
-    (player, player, player, player, 0): -900,  # Block player's four
-    (0, player, player, player, 0): -300,  # Block player's open three
-    (player, player, player, 0, 0): -80,  # Block player's three
-    (0, player, player, 0): -20  # Block player's open two
+    (player, player, player, player, agent): 950,
+    (0, player, player, player, agent, 0): 850,
+    (player, player, player, agent, 0): 45,
+    (agent, player, player, agent): 250
 }
 
 directions = [
-    (0, 1), (1, 0), (1, 1), (-1, 1),  # horizontal, vertical, diagonals
+    (0, 1), (1, 0), (1, 1), (-1, 1),
     (0, -1), (-1, 0), (-1, -1), (1, -1)
 ]
 
@@ -173,7 +173,23 @@ class PenteAI:
         self.player_number = player_number
         self.opponent = 3 - player_number
 
+    @staticmethod
+    def evaluate_board_state_advanced(board, player):
+        board_size = len(board)
+        scores = set()
 
+        for row in range(board_size):
+            for col in range(board_size):
+                for dx, dy in directions:
+                    for pattern in agent_patterns:
+                        game = PenteGame()
+                        if game.is_valid_move(row, col) and PenteAI._check_pattern(board, row, col, dx, dy, pattern):
+                            scores.add(agent_patterns[pattern])
+        if not scores:
+            return 0
+        else:
+            return max(scores)
+                            
     @staticmethod
     def _check_pattern(board, row, col, dx, dy, pattern):
         """
