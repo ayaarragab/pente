@@ -177,7 +177,7 @@ class PenteGameGUI:
                 if event.type == MOUSEBUTTONDOWN and not self.winner:
                     # Human turn
                     if self.pente_game.current_player == 1:
-                        try:
+                        # try:
                             row, col = self.get_board_coordinates(event.pos)
                             if 0 <= row < self.BOARD_SIZE and 0 <= col < self.BOARD_SIZE:
                                 if self.pente_game.make_move(row, col):
@@ -185,6 +185,7 @@ class PenteGameGUI:
                                     # ai turn
                                     if not self.winner:
                                         ai_move = self.ai.get_best_move(
+                                            self.pente_game.board,
                                             minimax_func=(
                                                 self.ai.minimax if self.is_alpha_beta else self.ai.minimax_without_alpha_Beta),
                                             isAlphaBeta=self.is_alpha_beta,
@@ -194,8 +195,8 @@ class PenteGameGUI:
                                             self.pente_game.make_move(ai_move[0], ai_move[1])
                                             self.winner = self.pente_game.check_win()
 
-                        except Exception as e:
-                            print(f"Invalid move: {e}")
+                        # except Exception as e:
+                        #     print(f"Invalid move: {e}")
 
         pygame.quit()
 
@@ -334,6 +335,3 @@ class PenteGameGUI:
 
 
 game = PenteGameGUI()
-
-
-
