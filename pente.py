@@ -368,7 +368,6 @@ class PenteAI:
                     if score > current_best_score:
                         current_best_score = score
                         current_best_move = (row, col)
-                    print(current_best_score)
             if current_best_move:
                 best_move = current_best_move
         return best_move
