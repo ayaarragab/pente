@@ -301,7 +301,6 @@ class PenteAI:
 
         return score
 
-
     def get_best_move(self, board, minimax_func, isAlphaBeta, heuristic_fun, max_depth=3, time_limit=2):
         best_move = None
         start_time = time.time()
@@ -331,7 +330,6 @@ class PenteAI:
                 best_move = current_best_move
 
         return best_move
-
 
     def get_prioritized_moves(self, board):
         """
@@ -419,8 +417,6 @@ class PenteAI:
             for col in range(board_size):
                 if (row, col) not in prioritized_moves:
                     prioritized_moves.append((row, col))
-        return prioritized_moves
-
 
         # Check center and surrounding positions
         for i in range(-2, 3):
