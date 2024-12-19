@@ -14,10 +14,16 @@ agent_patterns = {
 }
 
 player_patterns = {
-    (player, player, player, player, agent): 950,
+    (agent,player, player, player, player, agent): 9,
+    (player, player, player, player, agent): 900,
     (0, player, player, player, agent, 0): 850,
     (player, player, player, agent, 0): 45,
-    (agent, player, player, agent): 250
+    (agent, player, player, agent): 250,
+    (player,agent,player):150,
+    (player,0,player,agent,player):250,
+    (player,player,player,agent,player):250,
+    (player,player,agent,player,player):250
+
 }
 
 directions = [
@@ -259,7 +265,7 @@ class PenteAI:
     @staticmethod
     def evaluate_board_state_easy(board, player):
         """
-        Heuristic function for evaluating board state in a two-player game
+        Heuristic function for evaluating board state in a two-player game.
 
         Args:
             board (list): Game board
@@ -272,83 +278,35 @@ class PenteAI:
         score = 0
         board_size = len(board)
 
-        # Directions to check: horizontal, vertical, diagonals
-        directions = [
-            (0, 1),  # horizontal
-            (1, 0),  # vertical
-            (1, 1),  # diagonal down-right
-            (1, -1)  # diagonal up-right
-        ]
+        # Use `analyze_board` to evaluate threats and opportunities
+        threats = PenteAI.analyze_board(board, player, opponent, board_size, mode="threats")
+        opportunities = PenteAI.analyze_board(board, player, opponent, board_size, mode="opportunities")
 
-        # Check for sequences and potential blocking moves
-        for row in range(board_size):
-            for col in range(board_size):
-                for dx, dy in directions:
-                    # Player's sequences
-                    player_seq = 0
-                    empty_spaces = 0
+        # Add scores for opportunities (player's advantage) with reduced weight
+        for _, move_score in opportunities.items():
+            score += move_score * 0.7  
 
-                    # Check sequence in both directions
-                    for step in [1, -1]:
-                        for i in range(1, 5):  # Look up to 4 spaces away
-                            try:
-                                current_pos = board[row + step * i * dx][col + step * i * dy]
+        # Subtract scores for threats (opponent's advantage) with increased weight
+        for _, move_score in threats.items():
+            score -= move_score * 1.3
 
-                                if current_pos == player:
-                                    player_seq += 1
-                                elif current_pos == 0:
-                                    empty_spaces += 1
-                                else:
-                                    break
-                            except IndexError:
-                                break
+        # Punish moves near threats
+        for _ in threats.keys():
+            score -= 20  
 
-                    # Scoring for player's sequences
-                    if player_seq == 3 and empty_spaces > 0:
-                        score += 50  # Potential winning sequence
-                    elif player_seq == 4 and empty_spaces > 0:
-                        score += 100  # Very close to winning
-
-                    # Opponent blocking logic
-                    opp_seq = 0
-                    opp_empty_spaces = 0
-
-                    for step in [1, -1]:
-                        for i in range(1, 5):
-                            try:
-                                current_pos = board[row + step * i * dx][col + step * i * dy]
-
-                                if current_pos == opponent:
-                                    opp_seq += 1
-                                elif current_pos == 0:
-                                    opp_empty_spaces += 1
-                                else:
-                                    break
-                            except IndexError:
-                                break
-
-                    # Blocking opponent's potential winning sequences
-                    if opp_seq == 3 and opp_empty_spaces > 0:
-                        score -= 60  # Urgently need to block
-                    elif opp_seq == 4 and opp_empty_spaces > 0:
-                        score -= 120  # Critical blocking needed
-
-        # Favoring the center of the board (more strategic)
+        # Favor the center of the board (strategically valuable)
         center = board_size // 2
-        score += 10 * (1 if board[center][center] == player else 0)
+        if board[center][center] == player:
+            score += 10 
 
         return score
 
 
-    def get_best_move(self, board, minimax_func, isAlphaBeta, heuristic_fun, max_depth=3, time_limit=2):  # Add a time limit
+    def get_best_move(self, board, minimax_func, isAlphaBeta, heuristic_fun, max_depth=3, time_limit=2):
         best_move = None
-
-        start_time = time.time()  # Start the timer
-
-        print("Evaluating best move...")
+        start_time = time.time()
 
         valid_moves = self.get_prioritized_moves(board)
-
         for depth in range(1, max_depth + 1):
             current_best_move = None
             current_best_score = float('-inf')
@@ -368,9 +326,12 @@ class PenteAI:
                     if score > current_best_score:
                         current_best_score = score
                         current_best_move = (row, col)
+
             if current_best_move:
                 best_move = current_best_move
+
         return best_move
+
 
     def get_prioritized_moves(self, board):
         """
@@ -503,7 +464,7 @@ class PenteAI:
             for row, col in valid_moves:
                 if self.game.is_valid_move(row, col):
                     self.game.board[row][col] = self.player_number
-                    score = self.minimax_without_alpha_Beta(depth - 1, False, heuristic_funtion)
+                    score = self.minimax_without_alpha_Beta(board,depth - 1, False, heuristic_funtion)
                     self.game.board[row][col] = 0
                     best_score = max(best_score, score)
         else:
@@ -511,7 +472,7 @@ class PenteAI:
             for row, col in valid_moves:
                 if self.game.is_valid_move(row, col):
                     self.game.board[row][col] = self.opponent
-                    score = self.minimax_without_alpha_Beta(depth - 1, True, heuristic_funtion)
+                    score = self.minimax_without_alpha_Beta(board,depth - 1, True, heuristic_funtion)
                     self.game.board[row][col] = 0
                     best_score = min(best_score, score)
         return best_score
@@ -555,3 +516,65 @@ class PenteAI:
                     if beta <= alpha:
                         break
         return best_score
+    
+    @staticmethod
+    def analyze_board(board, player, opponent, board_size, mode="all"):
+        """
+        Analyze the board for various threats and opportunities.
+
+        Args:
+            board (list): The game board
+            player (int): Current player's number
+            opponent (int): Opponent's player number
+            board_size (int): Size of the game board
+            mode (str): The analysis mode ('parallel', 'threats', 'opportunities', 'surrounding', 'cross', 'all')
+
+        Returns:
+            list/dict: Depending on the mode, returns a list of moves or a dictionary of scores.
+        """
+        directions = [(0, 1), (1, 0), (1, 1), (-1, 1)]
+        results = []
+
+        if mode in ["all", "opportunities", "threats"]:
+            results = {}
+
+        for row in range(board_size):
+            for col in range(board_size):
+                if board[row][col] == 0:  # Empty spot
+                    for dx, dy in directions:
+                        opponent_count = 0
+                        player_count = 0
+                        empty_count = 0
+                        surrounding_opponent_count = 0
+
+                        for step in range(-4, 5):  # Look both directions
+                            nx, ny = row + step * dx, col + step * dy
+                            if 0 <= nx < board_size and 0 <= ny < board_size:
+                                if board[nx][ny] == opponent:
+                                    opponent_count += 1
+                                    if -1 <= step <= 1:
+                                        surrounding_opponent_count += 1
+                                elif board[nx][ny] == player:
+                                    player_count += 1
+                                elif board[nx][ny] == 0:
+                                    empty_count += 1
+                                else:
+                                    break
+
+                        # Handle each mode
+                        if mode in ["parallel", "all"] and opponent_count >= 2 and empty_count > 0:
+                            results.append((row, col))
+                            break
+
+                        if mode in ["threats", "all"]:
+                            threat_score = opponent_count * 50 if opponent_count >= 2 and empty_count >= 1 else 0
+                            opportunity_score = player_count * 40 if player_count >= 2 and empty_count >= 1 else 0
+                            total_score = threat_score + opportunity_score
+                            if total_score > 0:
+                                results[(row, col)] = total_score
+
+                        if mode in ["surrounding", "all"] and surrounding_opponent_count >= 2:
+                            results.append((row, col))
+                            break
+
+        return results
