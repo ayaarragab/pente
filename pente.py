@@ -64,11 +64,8 @@ class PenteGame:
         if not self.is_valid_move(row, col):
             return False
 
-        # Place the stone for the current player
         self.board[row][col] = self.current_player
 
-
-        # Check for captures and update capture count
         captures = self.check_captures(row, col)
         if captures > 0:
             if self.current_player == 1:
@@ -76,29 +73,18 @@ class PenteGame:
             elif self.current_player == 2:
                 self.captures_p2 += captures
 
-        # Switch to the other player
         self.toggle_player()
 
         print(f"Current player after move: {self.current_player}")  # Debugging line
         return True
 
     def toggle_player(self):
-        """Switch the current player between 1 and 2."""
-        self.current_player = 3 - self.current_player  # Alternates between 1 and 2
+        #Switch the current player between 1 and 2.
+        self.current_player = 3 - self.current_player
         print(f"Current player after toggle: {self.current_player}")  # Debugging line
 
     def check_captures(self, row, col):
-        """
-        Check and remove captured stone pairs
-
-        Args:
-            row (int): Row of the last placed stone
-            col (int): Column of the last placed stone
-
-        Returns:
-            int: Number of stone pairs captured
-        """
-
+       
         total_captures = 0
         current_stone = self.board[row][col]
         opponent_stone = 3 - current_stone
@@ -109,20 +95,7 @@ class PenteGame:
         return total_captures
 
     def check_direction_captures(self, row, col, dx, dy, current_stone, opponent_stone):
-        """
-        Check captures in a specific direction
-
-        Args:
-            row (int): Starting row
-            col (int): Starting column
-            dx (int): Row direction
-            dy (int): Column direction
-            current_stone (int): Current player's stone
-            opponent_stone (int): Opponent's stone
-
-        Returns:
-            int: Number of captures in this direction
-        """
+       
         captures = 0
         try:
             # Check for opponent stones to capture
@@ -158,13 +131,12 @@ class PenteGame:
                     if all(self.board[row + 4 - i][col + i] == player for i in range(5)):
                         return player
 
-        # Check captures (5 captures) for a win
         if self.captures_p1 >= 5:
             return 1
         if self.captures_p2 >= 5:
             return 2
 
-        return None  # Return None if no winner yet
+        return None  
 
 class PenteAI:
     def __init__(self, game, player_number):
