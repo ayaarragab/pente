@@ -182,6 +182,11 @@ class PenteGameGUI:
                             if 0 <= row < self.BOARD_SIZE and 0 <= col < self.BOARD_SIZE:
                                 if self.pente_game.make_move(row, col):
                                     self.winner = self.pente_game.check_win()
+
+                                    self.draw_board()
+                                    self.draw_stones()
+                                    self.draw_captures()
+                                    pygame.display.flip()
                                     # ai turn
                                     if not self.winner:
                                         ai_move = self.ai.get_best_move(
