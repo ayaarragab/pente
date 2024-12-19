@@ -422,7 +422,7 @@ class PenteAI:
         for i in range(-2, 3):
             for j in range(-2, 3):
                 if 0 <= center + i < board_size and 0 <= center + j < board_size:
-                    prioritized_moves.add((center + i, center + j))
+                    prioritized_moves.append((center + i, center + j))
 
         # Add positions near existing stones
         for row in range(board_size):
@@ -433,12 +433,12 @@ class PenteAI:
                             if (0 <= row + i < board_size and
                                     0 <= col + j < board_size and
                                     (row + i, col + j) not in prioritized_moves):
-                                prioritized_moves.add((row + i, col + j))
+                                prioritized_moves.append((row + i, col + j))
 
         # Add remaining positions
         for row in range(board_size):
             for col in range(board_size):
-                prioritized_moves.add((row, col))
+                prioritized_moves.append((row, col))
         return prioritized_moves
 
     def minimax_without_alpha_Beta(self, board, depth, is_maximizing, heuristic_funtion):
